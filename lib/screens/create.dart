@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class AddTodo extends StatefulWidget {
-  const AddTodo({super.key});
+  final Map? todo;
+  const AddTodo({super.key,this.todo});
 
   @override
   State<AddTodo> createState() => _AddTodoState();
@@ -15,12 +15,26 @@ class _AddTodoState extends State<AddTodo> {
 
   TextEditingController title = TextEditingController();
   TextEditingController description = TextEditingController();
+  bool isEdit=false;
+
+  @override
+  void initState(){
+    super.initState();
+
+    final todo=widget.todo;
+    if(todo!=null)
+      {
+        isEdit=true;
+        title.text=todo['title'];
+        description.text=todo['description'];
+      }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text('Add Todo'),
+          title: Text(isEdit?'Edit Todo':'Add Todo'),
         ),
         body: ListView(
           padding: const EdgeInsets.all(20),
@@ -41,7 +55,7 @@ class _AddTodoState extends State<AddTodo> {
             ),
             const SizedBox(height: 20),
             FloatingActionButton(
-              onPressed: submit, child: const Text('Submit'),)
+              onPressed: submit, child:Text(isEdit?'Edit Edit':'Submit'),)
           ],
         )
     );
@@ -63,20 +77,37 @@ class _AddTodoState extends State<AddTodo> {
   Future<void> submit()async {
     final titleValue = title.text;
     final descValue = description.text;
+    final todo=widget.todo;
     final body = {
       "title": titleValue,
       "description": descValue,
       "is_completed": false
     };
-    final uri = Uri.parse('https://api.nstack.in/v1/todos');
-    final res = await http.post(uri, body: jsonEncode(body),
-        headers: {'Content-Type': 'application/json'});
-    if (res.statusCode == 201) {
-      successAlert('Successfully created todo');
+    if(isEdit && todo!=null){
+      final uri = Uri.parse('https://api.nstack.in/v1/todos/${todo['_id']}');
+      final res = await http.put(uri, body: jsonEncode(body),
+          headers: {'Content-Type': 'application/json'});
+      if (res.statusCode == 200) {
+        successAlert('Successfully updated todo');
+      }
+      else {
+        errorAlert('Error occurred while updating todo');
+      }
     }
-    else {
-      errorAlert('Error occurred while creating todo');
+    else{
+      final uri = Uri.parse('https://api.nstack.in/v1/todos');
+      final res = await http.post(uri, body: jsonEncode(body),
+          headers: {'Content-Type': 'application/json'});
+      if (res.statusCode == 201) {
+        successAlert('Successfully created todo');
+        title.text="";
+        description.text="";
+      }
+      else {
+        errorAlert('Error occurred while creating todo');
+      }
     }
+
   }
 }
 
